@@ -1,11 +1,15 @@
 import os
 from collections import defaultdict
 
+import dash_leaflet as dl
 import pandas as pd
 import utm
+from dash import Dash, html
+import folium
 
 enlace_input_tesis = "G:\Mi unidad\descarga_chrome\paper_tesis"
-directorio = r"C:\Users\fvera\PycharmProjects\pyOtp"
+# directorio = r"C:\Users\fvera\PycharmProjects\pyOtp"
+directorio = r"D:\Pycharm free\pythonOtp"
 
 
 def read_input() -> pd.DataFrame:
@@ -19,9 +23,11 @@ def read_input() -> pd.DataFrame:
     return df
 
 
-def read_input_small() -> pd.DataFrame:
+def read_input_small(chunksize=50000) -> pd.DataFrame:
+    if chunksize == -1:
+        return read_input()
     print("Leyendo input")
-    dfs = pd.read_csv(os.path.join(enlace_input_tesis, "datos_jacque.csv"), chunksize=50000)
+    dfs = pd.read_csv(os.path.join(enlace_input_tesis, "datos_jacque.csv"), chunksize=chunksize)
     for df in dfs:
         print(list(df.columns))
         print(df.describe())
@@ -46,7 +52,9 @@ def read_consolidado_parada():
     xs, ys, nombres = list(df['x']), list(df['y']), list(df['Código paradero TS'])
     for i in range(len(xs)):
         nombre, x, y = nombres[i], xs[i], ys[i]
+
         try:
+            y, x = utm.to_latlon(x, y, 19, "H")
             dic_nombre_xy[nombre] = (float(x), float(y))
         except Exception as e:
             print(e, " No se pudo obtener coordenada paradero ", nombre)
@@ -66,7 +74,6 @@ def read_consolidado_parada_metro():
         nombre = nombre.upper().replace("Ñ", "N").replace("Á", "A").replace("É", "E").replace("Í", "I").replace("Ó",
                                                                                                                 "O").replace(
             "Ú", "U").replace(" (L3-L1)", "").replace(" (L1-L5)", "")
-        x, y, _, _ = utm.from_latlon(y, x)
         try:
             dic_nombre_xy[nombre] = (float(x), float(y))
         except Exception as e:
@@ -113,17 +120,97 @@ def join_x_y_paradero_subida_bajada(viajes, dic_paradas, dic_paradas_metro):
     return viajes
 
 
-viajes = read_input_small()
+def get_point_map_od(lp, lx, ly):
+    dict_position_weight = defaultdict(None)
+    for i in range(len(lp)):
+        ps = lp[i]
+        if ps in dict_position_weight:
+            x, y, w = dict_position_weight[ps]
+            dict_position_weight[ps] = x, y, w + 1
+        else:
+            dict_position_weight[ps] = lx[i], ly[i], 1
+    w_max = 0
+    for ps in dict_position_weight:
+        x, y, w = dict_position_weight[ps]
+        if w >= w_max:
+            w_max = w
+    tupla = [(dict_position_weight[ps], ps) for ps in dict_position_weight]
+    tupla = [(x, y, w, w / w_max * 10, ps) for (x, y, w), ps in tupla]
+    return tupla
+
+
+def get_cluster(tupla, name):
+    markers = []
+    for x, y, v, w, p in tupla:
+        markers.append(
+            dl.CircleMarker(
+                center=(y, x),
+                radius=5,
+                color="green",
+                weight=w,
+                # icon=icon,
+                children=[dl.Tooltip(p),
+                          dl.Popup([
+                              html.P(
+                                  "Observaciones: {}".format(
+                                      v))
+                          ])],
+            )
+        )
+    cluster = dl.MarkerClusterGroup(id=name, children=markers, )
+    return cluster
+
+
+def mapa_od(viajes: pd.DataFrame):
+    lps = list(viajes['paraderosubida'])
+    lpb = list(viajes['paraderobajada'])
+    lxs = list(viajes['xs'])
+    lys = list(viajes['ys'])
+    lxb = list(viajes['xb'])
+    lyb = list(viajes['yb'])
+
+    tupla_ps = get_point_map_od(lps, lxs, lys)
+    tupla_pb = get_point_map_od(lpb, lxb, lyb)
+
+    subidas_cluster = dl.FeatureGroup([get_cluster(tupla_ps, "Subidas")],
+                    "Subidas cluster")
+    bajadas_cluster = dl.FeatureGroup([get_cluster(tupla_pb, "Bajadas")],
+                    "Bajadas cluster")
+
+    my_map = dl.Map(center=[lys[0], lxs[0]], zoom=10, children=[
+        dl.TileLayer(),
+        dl.LayersControl([subidas_cluster, bajadas_cluster],baseLayer=subidas_cluster, overlays=bajadas_cluster)
+    ],
+                    style={'width': '100%', 'height': '100vh', 'margin': "auto", "display": "block"}, id="map")
+
+    # Create example app.
+    app = Dash()
+    app.layout = html.Div([
+        my_map
+    ])
+
+    if __name__ == '__main__':
+        app.run_server()
+
+
+# leemos datos de jacque
+viajes = read_input_small(chunksize=-1)
+# leemos consolidado de paradas
 paradas, dic_paradas = read_consolidado_parada()
+# leemos consolidado de parada de metro
 paradas_metro, dic_paradas_metro = read_consolidado_parada_metro()
+# agregamos x,y a paradero de subida y bajada
+viajes = join_x_y_paradero_subida_bajada(viajes, dic_paradas, dic_paradas_metro)
+# contamos el numero de dias observado por id de usuario
 id_counts = contar_observaciones_id(viajes)
 
 print(viajes['paraderosubida'])
 print(paradas['Código paradero TS'])
 
-viajes = join_x_y_paradero_subida_bajada(viajes, dic_paradas, dic_paradas_metro)
+mapa_od(viajes)
 
 # graficar OD
-# ¿buffers?
+## ¿buffers?
+## click on O or D and intensify color OD PAIR
 # graficar viajes
 #
