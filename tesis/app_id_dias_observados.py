@@ -1,14 +1,9 @@
-import os
-from collections import defaultdict
-
-import pandas as pd
 import plotly.express as px
 from dash import Dash, dcc, html, Input, Output
-from typing import List
-from procesamiento_input_paper import read_input, read_input_small, contar_observaciones_id
 
+from procesamiento_input_paper import read_input_small, contar_observaciones_id
 
-df = read_input_small()
+df = read_input_small(chunksize=-1)
 id_counts = contar_observaciones_id(df)
 
 app = Dash(__name__)
