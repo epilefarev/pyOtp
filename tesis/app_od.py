@@ -2,7 +2,7 @@ from collections import defaultdict
 
 import dash_leaflet as dl
 import pandas as pd
-from dash import Dash, html
+from dash import html
 
 from procesamiento_input_paper import read_input_small, read_consolidado_parada, read_consolidado_parada_metro, \
     join_x_y_paradero_subida_bajada
@@ -72,7 +72,7 @@ def get_markers(tupla, color, name):
 
 def get_viajes_xy_paradas_subidas_bajadas() -> pd.DataFrame:
     # leemos datos de jacque
-    viajes = read_input_small(chunksize=1000)
+    viajes = read_input_small(chunksize=-1)
     # leemos consolidado de paradas
     paradas, dic_paradas = read_consolidado_parada()
     # leemos consolidado de parada de metro
@@ -132,11 +132,6 @@ my_map = dl.Map(center=[lys[0], lxs[0]], zoom=10, children=[
 ],
                 style={'width': '100%', 'height': '100vh', 'margin': "auto", "display": "block"}, id="map")
 
-# Create example app.
-app = Dash()
-app.layout = html.Div([
+layout_od = html.Div([
     my_map
 ])
-
-if __name__ == '__main__':
-    app.run_server()

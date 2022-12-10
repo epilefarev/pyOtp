@@ -1,14 +1,12 @@
 import plotly.express as px
-from dash import Dash, dcc, html, Input, Output
+from dash import dcc, html, Input, Output, callback
 
 from procesamiento_input_paper import read_input_small, contar_observaciones_id
 
 df = read_input_small(chunksize=-1)
 id_counts = contar_observaciones_id(df)
 
-app = Dash(__name__)
-
-app.layout = html.Div([
+layout_id = html.Div([
     html.H4('Distribution'),
     dcc.Graph(id="graph"),
     html.P("Filtro:"),
@@ -18,7 +16,7 @@ app.layout = html.Div([
 ])
 
 
-@app.callback(
+@callback(
     Output("graph", "figure"),
     Output("total_datos", "children"),
     Input("filter", "value"))
@@ -27,6 +25,3 @@ def display_color(filter):
     data = [d for d in data if d >= filter]
     fig = px.histogram(data, range_x=[0, 20])
     return fig, html.P('Total datos {}'.format(len(data)))
-
-
-app.run_server(debug=True)

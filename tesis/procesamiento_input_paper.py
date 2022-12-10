@@ -1,10 +1,8 @@
 import os
 from collections import defaultdict
 
-import dash_leaflet as dl
 import pandas as pd
 import utm
-from dash import Dash, html
 
 enlace_input_tesis = "G:\Mi unidad\descarga_chrome\paper_tesis"
 # directorio = r"C:\Users\fvera\PycharmProjects\pyOtp"
@@ -119,8 +117,6 @@ def join_x_y_paradero_subida_bajada(viajes, dic_paradas, dic_paradas_metro):
     return viajes
 
 
-
-
 # leemos datos de jacque
 viajes = read_input_small(chunksize=1000)
 # leemos consolidado de paradas
@@ -134,8 +130,6 @@ id_counts = contar_observaciones_id(viajes)
 
 print(viajes['paraderosubida'])
 print(paradas['Código paradero TS'])
-
-
 
 # graficar OD
 ## ¿buffers?
