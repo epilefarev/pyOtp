@@ -1,11 +1,9 @@
 from collections import defaultdict
 
 import dash_leaflet as dl
-import pandas as pd
 from dash import html
 
-from procesamiento_input_paper import read_input_small, read_consolidado_parada, read_consolidado_parada_metro, \
-    join_x_y_paradero_subida_bajada
+from procesamiento_input_paper import get_viajes_xy_paradas_subidas_bajadas
 
 
 def get_point_map_od(lp, lx, ly):
@@ -70,16 +68,7 @@ def get_markers(tupla, color, name):
     return dl.FeatureGroup(markers, id=name)
 
 
-def get_viajes_xy_paradas_subidas_bajadas() -> pd.DataFrame:
-    # leemos datos de jacque
-    viajes = read_input_small(chunksize=-1)
-    # leemos consolidado de paradas
-    paradas, dic_paradas = read_consolidado_parada()
-    # leemos consolidado de parada de metro
-    paradas_metro, dic_paradas_metro = read_consolidado_parada_metro()
-    # agregamos x,y a paradero de subida y bajada
-    viajes = join_x_y_paradero_subida_bajada(viajes, dic_paradas, dic_paradas_metro)
-    return viajes
+
 
 
 viajes = get_viajes_xy_paradas_subidas_bajadas()
@@ -120,12 +109,12 @@ my_map = dl.Map(center=[lys[0], lxs[0]], zoom=10, children=[
             dl.Overlay(
                 [subidas_markers],
                 name="Subidas",
-                checked=False,
+                checked=True,
             ),
             dl.Overlay(
                 [bajadas_markers],
                 name="Bajadas",
-                checked=False,
+                checked=True,
             ),
         ],
     ),
@@ -133,5 +122,7 @@ my_map = dl.Map(center=[lys[0], lxs[0]], zoom=10, children=[
                 style={'width': '100%', 'height': '100vh', 'margin': "auto", "display": "block"}, id="map")
 
 layout_od = html.Div([
+    html.H4("Distribución espacial de origenes y destinos de viajes"),
+    html.Hr(),
     my_map
 ])

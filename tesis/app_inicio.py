@@ -24,9 +24,9 @@ def creador_tarjeta(enlace_imagen, titulo, parrafo, enlace_pagina):
 
 
 layout_inicio = dbc.Row([
-    dbc.Col(creador_tarjeta("assets/favicon.ico", "Análisis de IDS", "Distribución de días observados por ID",
+    dbc.Col(creador_tarjeta("assets/id.png", "Análisis de IDS", "Distribución de días observados por ID",
                             "http://127.0.0.1:8070/id"), width=3),
-    dbc.Col(creador_tarjeta("assets/favicon.ico", "Análisis de OD", "Distribución de orígenes y destinos de viajes",
+    dbc.Col(creador_tarjeta("assets/od.png", "Análisis de OD", "Distribución de orígenes y destinos de viajes",
                             "http://127.0.0.1:8070/od"), width=3),
     dbc.Col(
         creador_tarjeta("assets/favicon.ico", "Análisis Buffers OD", "Análisis de alternativas de viajes por par OD",
