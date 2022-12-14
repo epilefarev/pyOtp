@@ -1,10 +1,13 @@
-from collections import defaultdict
 import collections
+import json
+from collections import defaultdict
+import pandas as pd
+import dash_bootstrap_components as dbc
+from dash import html, Input, Output, callback, Dash
+import dash_core_components as dcc
+
 from procesamiento_input_paper import get_viajes_xy_paradas_subidas_bajadas, read_consolidado_parada, \
     read_consolidado_parada_metro
-import pandas as pd
-from typing import Tuple
-import json
 
 viajes = get_viajes_xy_paradas_subidas_bajadas(1000)
 # leemos consolidado de paradas
@@ -17,8 +20,14 @@ def distancia_puntos_latlon(lat1: float, lon1: float, lat2: float, lon2: float) 
     return (((lat1 - lat2) ** 2 + (lon1 - lon2) ** 2) ** 0.5) * 111100
 
 
-def get_bufferes_paraderos(dic_paradas: collections.defaultdict,
-                           dic_parada_metro: collections.defaultdict) -> collections.defaultdict:
+def __get_bufferes_paraderos(dic_paradas: collections.defaultdict,
+                             dic_parada_metro: collections.defaultdict) -> collections.defaultdict:
+    """
+    preconsulta de buffers que hay que actualizar cuando se actualiza el consolidado de paraderos
+    :param dic_paradas:
+    :param dic_parada_metro:
+    :return:
+    """
     paraderos = list(set(list(dic_paradas.keys()) + list(dic_parada_metro.keys())))
     output = defaultdict(list)
     no_output = defaultdict(list)
@@ -58,10 +67,65 @@ def get_bufferes_paraderos(dic_paradas: collections.defaultdict,
                     no_output[p1].append(p2)
                     no_output[p2].append(p1)
 
+    a_file = open("salida/buffers.json", "w")
+    json.dump(output, a_file, indent=4)
+    a_file.close()
+
     return output
 
 
-dic_buffer = get_bufferes_paraderos(dic_paradas, dic_paradas_metro)
-a_file = open("buffers.json", "w")
-json.dump(dic_buffer, a_file, indent=4)
-a_file.close()
+def read_json_buffers():
+    """
+    dic[paradero]=list[paradero]
+    :return:
+    """
+    with open("salida/buffers.json", "r", encoding='utf-8') as file:
+        data = json.load(file)
+    return data
+
+
+def filter_viajes_by_origen(viajes: pd.DataFrame, ps):
+    return viajes[viajes['paraderosubida'] == ps]
+
+
+def filter_viajes_by_destino(viajes: pd.DataFrame, pb):
+    return viajes[viajes['paraderobajada'] == pb]
+
+
+def filter_viajes_by_origen_and_destino(viajes: pd.DataFrame, ps, pb):
+    return viajes[(viajes['paraderosubida'] == ps) & (viajes['paraderobajada'] == pb)]
+
+
+def get_selector_parada(dic_paradas, dic_parada_metro):
+    paraderos = list(set(list(dic_paradas.keys()) + list(dic_parada_metro.keys())))
+    return dcc.Dropdown([{'label': p, 'value': p} for p in paraderos], paraderos[0], id='selector_parada_buffers')
+
+
+def get_selector_tipo_buffers():
+    tipo = ['Origen', 'Destino']
+    return dcc.Dropdown([{'label': p, 'value': p} for p in tipo], tipo[1], id='selector_tipo_buffers')
+
+
+app = Dash(__name__)
+app.layout = html.Div([
+    html.H4("Análisis de buffers"),
+    html.Hr(),
+    dbc.Row([
+        dbc.Col(["Paradero"], width=3),
+        dbc.Col([get_selector_parada(dic_paradas, dic_paradas_metro)], width=3),
+        dbc.Col(["Tipo"], width=3),
+        dbc.Col([get_selector_tipo_buffers()], width=3),
+    ]),
+    dbc.Row([
+        dbc.Col(["Numero de viajes"], width=3),
+        dbc.Col(["Numero de origenes/destinos"], width=3),
+    ])
+])
+
+
+@app.callback(
+    Output('dd-output-container', 'children'),
+    Input('demo-dropdown', 'value')
+)
+def update_output(value):
+    return f'You have selected {value}'

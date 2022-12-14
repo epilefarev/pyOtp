@@ -1,0 +1,3 @@
+- Proceso no automatizado
+# cuando se actualiza un archivo de paradas hay que actualizar pre proceso de reconocimiento de buffers que genera
+# archivo salida/buffers.json funcion __get_bufferes_paraderos de app_buffersod,py
