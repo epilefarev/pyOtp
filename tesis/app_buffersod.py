@@ -3,8 +3,7 @@ import json
 from collections import defaultdict
 import pandas as pd
 import dash_bootstrap_components as dbc
-from dash import html, Input, Output, callback, Dash
-import dash_core_components as dcc
+from dash import html, Input, Output, callback, Dash, State, dcc
 
 from procesamiento_input_paper import get_viajes_xy_paradas_subidas_bajadas, read_consolidado_parada, \
     read_consolidado_parada_metro
@@ -106,8 +105,8 @@ def get_selector_tipo_buffers():
     return dcc.Dropdown([{'label': p, 'value': p} for p in tipo], tipo[1], id='selector_tipo_buffers')
 
 
-app = Dash(__name__)
-app.layout = html.Div([
+
+layout_buffer = html.Div([
     html.H4("Análisis de buffers"),
     html.Hr(),
     dbc.Row([
@@ -119,13 +118,21 @@ app.layout = html.Div([
     dbc.Row([
         dbc.Col(["Numero de viajes"], width=3),
         dbc.Col(["Numero de origenes/destinos"], width=3),
-    ])
+    ]),
+    dbc.Row([
+        dbc.Col([], width=10),
+        dbc.Col([dbc.Button("Procesar", color="primary", className="me-1", id='procesarbuffer')], width=2),
+    ]),
+    html.Div(id='map_buffers_od')
+
 ])
 
 
-@app.callback(
-    Output('dd-output-container', 'children'),
-    Input('demo-dropdown', 'value')
+@callback(
+    Output('map_buffers_od', 'children'),
+    Input("procesar", "n_clicks"), State('selector_parada_buffers', 'value'), State('selector_tipo_buffers', 'value')
 )
-def update_output(value):
-    return f'You have selected {value}'
+def update_output(n, parada, tipo):
+    return 'parada seleccionada {}, {}'.format(parada, tipo)
+
+

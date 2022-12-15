@@ -6,6 +6,7 @@ from dash.dependencies import Input, Output, State
 from diseño.home.home import SIDEBAR_STYLE, SIDEBAR_HIDEN, CONTENT_STYLE, CONTENT_STYLE1
 from app_inicio import layout_inicio
 from app_id_dias_observados import layout_id
+from app_buffersod import layout_buffer
 from app_od import layout_od
 
 
@@ -118,7 +119,7 @@ def render_page_content(pathname):
     elif pathname == "/od":
         return layout_od
     elif pathname == "/buffersod":
-        return html.P("EN CONSTRUCCIÓN")
+        return layout_buffer
 
     # If the user tries to reach a different page, return a 404 message
     return dbc.Jumbotron(
