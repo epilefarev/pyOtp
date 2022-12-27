@@ -8,6 +8,7 @@ import dash_leaflet as dl
 from procesamiento_input_paper import get_viajes_xy_paradas_subidas_bajadas, read_consolidado_parada, \
     read_consolidado_parada_metro
 import logging
+import plotly.graph_objects as go
 
 logger_buffer = logging.getLogger()
 
@@ -127,12 +128,11 @@ layout_buffer = html.Div([
     ]),
     dbc.Row([
         dbc.Col(html.Div(id='map_buffers_od'), width=9),
-        dbc.Col([dbc.Row(html.Div(id="numero_viajes_buffer")),
-                 dbc.Row(html.Div(id="numero_od_buffer"))], width=3)
-    ]),
+        dbc.Col([dbc.Row(dcc.Graph(id="numero_viajes_buffer")), dbc.Row(dcc.Graph(id="numero_od_buffer_2")),
+                 dbc.Row(dcc.Graph(id="numero_od_buffer")), ], width=3)
+]),
 
 ])
-
 
 def get_buffer(tipo, paradero_central):
     if tipo == "Origen":
@@ -257,8 +257,9 @@ def get_mapa_buffer(viajes_buffers, paraderos_buffer, parada, tipo):
 
 @callback(
     Output('map_buffers_od', 'children'),
-    Output('numero_viajes_buffer', 'children'),
-    Output('numero_od_buffer', 'children'),
+    Output('numero_viajes_buffer', 'figure'),
+    Output('numero_od_buffer', 'figure'),
+    Output('numero_od_buffer_2', 'figure'),
     [Input("procesarbuffer", "n_clicks")], State('selector_parada_buffers', 'value'),
     State('selector_tipo_buffers', 'value')
 )
@@ -269,10 +270,55 @@ def update_output(n, parada, tipo):
     if tipo == "Origen":
         viajes_parada = viajes[viajes['paraderosubida'].isin(paraderos_buffers)]
         my_map = get_mapa_buffer(viajes_parada, paraderos_buffers, parada, tipo)
-        return my_map, len(viajes_parada), len(
-            list(viajes_parada['paraderosubida'].unique()))
+
+        fig_viajes = go.Figure(go.Indicator(
+            mode="number",
+            value=len(viajes_parada), title="Total de viajes"))
+        fig_viajes.update_layout(paper_bgcolor='rgba(0,0,0,0)',
+                                 # plot_bgcolor='rgba(0,0,0,0)',
+                                 showlegend=False, height=300)
+
+        fig_destinos = go.Figure(go.Indicator(
+            mode="number",
+            value=len(
+                list(viajes_parada['paraderobajada'].unique())), title="Total de destinos"))
+        fig_destinos.update_layout(paper_bgcolor='rgba(0,0,0,0)',
+                                   # plot_bgcolor='rgba(0,0,0,0)',
+                                   showlegend=False, height=300)
+
+        fig_origenes = go.Figure(go.Indicator(
+            mode="number",
+            value=len(
+                list(viajes_parada['paraderosubida'].unique())), title="Total de orígenes"))
+        fig_origenes.update_layout(paper_bgcolor='rgba(0,0,0,0)',
+                                   # plot_bgcolor='rgba(0,0,0,0)',
+                                   showlegend=False, height=300)
+
+        return my_map, fig_viajes, fig_destinos, fig_origenes
     else:
         viajes_parada = viajes[viajes['paraderobajada'].isin(paraderos_buffers)]
         my_map = get_mapa_buffer(viajes_parada, paraderos_buffers, parada, tipo)
-        return my_map, len(viajes_parada), len(
-            list(viajes_parada['paraderobajada'].unique()))
+        fig_viajes = go.Figure(go.Indicator(
+            mode="number",
+            value=len(viajes_parada), title="Total de viajes"))
+        fig_viajes.update_layout(paper_bgcolor='rgba(0,0,0,0)',
+                                 # plot_bgcolor='rgba(0,0,0,0)',
+                                 showlegend=False, height=300)
+
+        fig_destinos = go.Figure(go.Indicator(
+            mode="number",
+            value=len(
+                list(viajes_parada['paraderobajada'].unique())), title="Total de destinos"))
+        fig_destinos.update_layout(paper_bgcolor='rgba(0,0,0,0)',
+                                   # plot_bgcolor='rgba(0,0,0,0)',
+                                   showlegend=False, height=300)
+
+        fig_origenes = go.Figure(go.Indicator(
+            mode="number",
+            value=len(
+                list(viajes_parada['paraderosubida'].unique())), title="Total de orígenes"))
+        fig_origenes.update_layout(paper_bgcolor='rgba(0,0,0,0)',
+                                   # plot_bgcolor='rgba(0,0,0,0)',
+                                   showlegend=False, height=300)
+
+        return my_map, fig_viajes, fig_destinos, fig_origenes

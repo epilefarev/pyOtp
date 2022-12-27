@@ -7,8 +7,8 @@ import logging
 
 enlace_input_tesis = "G:\Mi unidad\descarga_chrome\paper_tesis"
 
-# directorio = r"C:\Users\fvera\PycharmProjects\pyOtp"
-directorio = r"D:\Pycharm free\pythonOtp"
+directorio = r"C:\Users\fvera\PycharmProjects\pyOtp"
+# directorio = r"D:\Pycharm free\pythonOtp"
 
 
 def read_input() -> pd.DataFrame:
