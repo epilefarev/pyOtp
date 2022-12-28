@@ -71,7 +71,7 @@ def get_markers(tupla, color, name):
 
 
 
-viajes = get_viajes_xy_paradas_subidas_bajadas(chunksize=1000)
+viajes = get_viajes_xy_paradas_subidas_bajadas(chunksize=3000)
 
 lps = list(viajes['paraderosubida'])
 lpb = list(viajes['paraderobajada'])

@@ -4,7 +4,7 @@ import dash_bootstrap_components as dbc
 import plotly.graph_objects as go
 from procesamiento_input_paper import read_input_small, contar_observaciones_id
 
-df = read_input_small(chunksize=1000)
+df = read_input_small(chunksize=3000)
 id_counts = contar_observaciones_id(df)
 
 layout_id = html.Div([

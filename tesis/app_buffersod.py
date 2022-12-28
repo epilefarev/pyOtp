@@ -12,7 +12,7 @@ import plotly.graph_objects as go
 
 logger_buffer = logging.getLogger()
 
-viajes = get_viajes_xy_paradas_subidas_bajadas(-1)
+viajes = get_viajes_xy_paradas_subidas_bajadas(3000)
 # leemos consolidado de paradas
 paradas, dic_paradas = read_consolidado_parada()
 # leemos consolidado de parada de metro

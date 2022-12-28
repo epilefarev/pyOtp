@@ -8,7 +8,7 @@ from app_inicio import layout_inicio
 from app_id_dias_observados import layout_id
 from app_buffersod import layout_buffer
 from app_od import layout_od
-
+from app_viajes_od import layout_viajes_od
 
 # iniciamos app
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP, dbc.icons.BOOTSTRAP, dbc.icons.FONT_AWESOME],
@@ -28,7 +28,7 @@ navbar = dbc.NavbarSimple(
     fluid=True,
 )
 
-paginas = ['source', 'id', 'od', 'buffersod']
+paginas = ['source', 'id', 'od', 'buffersod', 'viajesod']
 # barra de menu
 sidebar = html.Div(
     [
@@ -40,6 +40,7 @@ sidebar = html.Div(
                 dbc.NavLink("Ids", href="/id", id="id-link"),
                 dbc.NavLink("Origen-Destino", href="/od", id="od-link"),
                 dbc.NavLink("Buffers OD", href="/buffersod", id="buffersod-link"),
+                dbc.NavLink("Viajes OD", href="/viajesod", id="viajesod-link"),
             ],
             vertical=True,
             pills=True,
@@ -105,7 +106,7 @@ def toggle_sidebar(n, nclick):
 def toggle_active_links(pathname):
     if pathname == "/":
         # Treat page 1 as the homepage / index
-        return True, False, False, False
+        return True, False, False, False, False
     return [pathname == f"/{i}" for i in paginas]
 
 
@@ -120,6 +121,8 @@ def render_page_content(pathname):
         return layout_od
     elif pathname == "/buffersod":
         return layout_buffer
+    elif pathname == "/viajesod":
+        return layout_viajes_od
 
     # If the user tries to reach a different page, return a 404 message
     return dbc.Jumbotron(
