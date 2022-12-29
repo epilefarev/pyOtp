@@ -13,7 +13,7 @@ from procesamiento_input_paper import get_viajes_xy_paradas_subidas_bajadas, rea
 
 logger_buffer = logging.getLogger()
 
-viajes = get_viajes_xy_paradas_subidas_bajadas(3000)
+viajes = get_viajes_xy_paradas_subidas_bajadas(10000)
 # leemos consolidado de paradas
 paradas, dic_paradas = read_consolidado_parada()
 # leemos consolidado de parada de metro
@@ -22,6 +22,16 @@ paradas_metro, dic_paradas_metro = read_consolidado_parada_metro()
 
 def get_buffer(paradero_central):
     color = 'green'
+    try:
+        lon, lat = dic_paradas[paradero_central]
+    except:
+        lon, lat = dic_paradas_metro[paradero_central]
+    markers = [dl.Circle(center=(lat, lon), radius=500, color=color, fillOpacity=0.1, dashArray='10,20')]
+    return dl.FeatureGroup(markers)
+
+
+def get_buffer_destino(paradero_central):
+    color = 'red'
     try:
         lon, lat = dic_paradas[paradero_central]
     except:
@@ -61,14 +71,12 @@ def get_paraderos_origen(paraderos_buffers, viajes_buffers):
     return dl.FeatureGroup(markers)
 
 
-def get_paradero_destino(viajes_buffers):
-    paraderos = viajes_buffers['paraderobajada'].unique()
-    color = 'red'
-
+def get_paraderos_destino(paraderos_buffers, viajes_buffers):
     markers = []
-    for p in paraderos:
+    for p in paraderos_buffers:
 
         n_viajes = len(viajes_buffers[viajes_buffers['paraderobajada'] == p])
+        color = 'red' if n_viajes != 0 else 'grey'
 
         try:
             lon, lat = dic_paradas[p]
@@ -94,10 +102,11 @@ def get_paradero_destino(viajes_buffers):
     return dl.FeatureGroup(markers)
 
 
-def get_mapa_buffer(viajes_buffers, paraderos_buffer, parada):
+def get_mapa_buffer(viajes_buffers, paraderos_buffer, parada, paraderos_buffers_destino, paradero_destino):
     marcadores_paraderos_buffer = get_paraderos_origen(paraderos_buffer, viajes_buffers)
+    marcadores_paraderos_buffer_destino = get_paraderos_destino(paraderos_buffers_destino, viajes_buffers)
     buffers_map = get_buffer(parada)
-    marcadores_paraderos_no_buffer = get_paradero_destino(viajes_buffers)
+    buffers_map_destino = get_buffer_destino(paradero_destino)
     try:
         lon, lat = dic_paradas[parada]
     except:
@@ -112,17 +121,22 @@ def get_mapa_buffer(viajes_buffers, paraderos_buffer, parada):
                 ),
                 dl.Overlay(
                     [buffers_map],
-                    name="Buffer",
+                    name="Buffer Origen",
+                    checked=True,
+                ),
+                dl.Overlay(
+                    [buffers_map_destino],
+                    name="Buffer Destino",
                     checked=True,
                 ),
                 dl.Overlay(
                     [marcadores_paraderos_buffer],
-                    name="Paraderos en Buffer",
+                    name="Paraderos en Origen",
                     checked=True,
                 ),
                 dl.Overlay(
-                    [marcadores_paraderos_no_buffer],
-                    name="Paraderos no en Buffer",
+                    [marcadores_paraderos_buffer_destino],
+                    name="Paraderos en Destino",
                     checked=True,
                 )
             ],
@@ -246,6 +260,17 @@ layout_viajes_od = html.Div([
 ])
 
 
+def distinguir_alternativas_viajes(viajes: pd.DataFrame):
+    print(list(viajes.columns))
+    print('idx_estrategia_viaje_paradero')
+    print(viajes['idx_estrategia_viaje_paradero'])
+    print("estrategia viaje")
+    print(viajes['estrategia_viaje'])
+    print('idx_alternativa_viaje_paradero')
+    print(viajes['idx_alternativa_viaje_paradero'])
+    print("alternativa viaje")
+    print(viajes['alternativa_viaje'])
+
 @callback(
     Output('selector_parada_destino', 'options'),
     [Input("selector_parada_origen", "value")]
@@ -274,17 +299,21 @@ def update_value_destinos(opciones):
 )
 def update_output(parada_destino, parada_origen):
     paraderos_buffers = buffers[parada_origen] + [parada_origen]
+    paraderos_buffers_destino = buffers[parada_destino] + [parada_destino]
     logger_buffer.info("paradero dentro del buffer")
     logger_buffer.info(paraderos_buffers)
-    print(parada_origen, parada_destino)
-    viajes_parada = viajes[
-        (viajes['paraderosubida'].isin(paraderos_buffers)) & (viajes['paraderobajada'] == parada_destino)]
+    # filtramos viajes dentro del biffer de origen y destino
+    viajes_od = viajes[
+        (viajes['paraderosubida'].isin(paraderos_buffers)) & (viajes['paraderobajada'].isin(paraderos_buffers_destino))]
 
-    my_map = get_mapa_buffer(viajes_parada, paraderos_buffers, parada_origen)
+    distinguir_alternativas_viajes(viajes_od)
+
+    my_map = get_mapa_buffer(viajes_od, paraderos_buffers, parada_origen, paraderos_buffers_destino,
+                             parada_destino)
 
     fig_viajes = go.Figure(go.Indicator(
         mode="number",
-        value=len(viajes_parada), title="Total de viajes"))
+        value=len(viajes_od), title="Total de viajes"))
     fig_viajes.update_layout(paper_bgcolor='rgba(0,0,0,0)',
                              # plot_bgcolor='rgba(0,0,0,0)',
                              showlegend=False, height=300)
@@ -292,7 +321,7 @@ def update_output(parada_destino, parada_origen):
     fig_destinos = go.Figure(go.Indicator(
         mode="number",
         value=len(
-            list(viajes_parada['paraderobajada'].unique())), title="Total de destinos"))
+            list(viajes_od['paraderobajada'].unique())), title="Total de destinos"))
     fig_destinos.update_layout(paper_bgcolor='rgba(0,0,0,0)',
                                # plot_bgcolor='rgba(0,0,0,0)',
                                showlegend=False, height=300)
@@ -300,7 +329,7 @@ def update_output(parada_destino, parada_origen):
     fig_origenes = go.Figure(go.Indicator(
         mode="number",
         value=len(
-            list(viajes_parada['paraderosubida'].unique())), title="Total de orígenes"))
+            list(viajes_od['paraderosubida'].unique())), title="Total de orígenes"))
     fig_origenes.update_layout(paper_bgcolor='rgba(0,0,0,0)',
                                # plot_bgcolor='rgba(0,0,0,0)',
                                showlegend=False, height=300)
