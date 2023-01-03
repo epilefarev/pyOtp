@@ -256,6 +256,11 @@ layout_viajes_od = html.Div([
                  dbc.Row(dcc.Graph(id="numero_origenes_od")),
                  dbc.Row(dcc.Graph(id="numero_destinos_od")), ], width=3)
     ]),
+    html.Hr(),
+    dbc.Row([
+        dbc.Col([dbc.Row(html.Div(id="estrategias_viajes_od")),
+                 dbc.Row(html.Div(id="alternativas_viajes_od"))])
+    ]),
 
 ])
 
@@ -295,6 +300,8 @@ def update_value_destinos(opciones):
     Output('numero_viajes_od', 'figure'),
     Output('numero_origenes_od', 'figure'),
     Output('numero_destinos_od', 'figure'),
+    Output('estrategias_viajes_od', 'children'),
+    Output('alternativas_viajes_od', 'children'),
     [Input('selector_parada_destino', 'value')], State('selector_parada_origen', 'value')
 )
 def update_output(parada_destino, parada_origen):
@@ -334,4 +341,4 @@ def update_output(parada_destino, parada_origen):
                                # plot_bgcolor='rgba(0,0,0,0)',
                                showlegend=False, height=300)
 
-    return my_map, fig_viajes, fig_destinos, fig_origenes
+    return my_map, fig_viajes, fig_destinos, fig_origenes, str(viajes_od['estrategia_viaje'].value_counts()), str(viajes_od['alternativa_viaje'].value_counts())
