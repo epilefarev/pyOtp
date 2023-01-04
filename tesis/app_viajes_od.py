@@ -1,19 +1,20 @@
 import collections
-import dash_bootstrap_components as dbc
-import dash_leaflet as dl
 import json
 import logging
+from collections import defaultdict
+
+import dash_bootstrap_components as dbc
+import dash_leaflet as dl
 import pandas as pd
 import plotly.graph_objects as go
-from collections import defaultdict
-from dash import html, Input, Output, callback, Dash, State, dcc
+from dash import html, Input, Output, callback, State, dcc
 
 from procesamiento_input_paper import get_viajes_xy_paradas_subidas_bajadas, read_consolidado_parada, \
     read_consolidado_parada_metro
 
 logger_buffer = logging.getLogger()
 
-viajes = get_viajes_xy_paradas_subidas_bajadas(10000)
+viajes = get_viajes_xy_paradas_subidas_bajadas(-1)
 # leemos consolidado de paradas
 paradas, dic_paradas = read_consolidado_parada()
 # leemos consolidado de parada de metro
@@ -229,6 +230,10 @@ def filter_viajes_by_origen_and_destino(viajes: pd.DataFrame, ps, pb):
     return viajes[(viajes['paraderosubida'] == ps) & (viajes['paraderobajada'] == pb)]
 
 
+def filter_viajes_by_origenes_and_destinos(viajes: pd.DataFrame, ps, pb):
+    return viajes[(viajes['paraderosubida'].isin(ps)) & (viajes['paraderobajada'].isin(pb))]
+
+
 def get_selector_parada(dic_paradas, dic_parada_metro):
     paraderos = list(set(list(dic_paradas.keys()) + list(dic_parada_metro.keys())))
     return dcc.Dropdown([{'label': p, 'value': p} for p in paraderos], 'LAS REJAS', id='selector_parada_origen')
@@ -236,8 +241,52 @@ def get_selector_parada(dic_paradas, dic_parada_metro):
 
 def opciones_paradero_destino(parada_origen: str, viajes: pd.DataFrame):
     paraderos = list(viajes[viajes['paraderosubida'] == parada_origen]['paraderobajada'].unique())
-    return [{'label': "{}: {} viajes".format(p, len(filter_viajes_by_origen_and_destino(viajes, parada_origen, p))),
+
+    return [{'label': "{}: {} viajes".format(p, len(filter_viajes_by_origenes_and_destinos(viajes,
+                                                                                           buffers[parada_origen] + [
+                                                                                               parada_origen],
+                                                                                           buffers[p] + [p]))),
              'value': p} for p in paraderos]
+
+
+def figura_ranking(df: pd.DataFrame, x, y, ascending=True):
+    df = df.sort_values(by=[x], ascending=ascending)
+
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        x=list(df[x]),
+        y=list(df[y]),
+        orientation='h',
+        marker=dict(
+            color='deeppink',
+            line=dict(color='rgb(248, 248, 249)', width=1)
+        )
+    ))
+
+    fig.update_layout(
+        # height=150,
+        xaxis=dict(
+            showgrid=False,
+            showline=False,
+            showticklabels=True,
+            zeroline=True,
+            # domain=[0, 1]
+        ),
+        yaxis=dict(
+            showgrid=False,
+            showline=False,
+            showticklabels=True,
+            zeroline=True,
+            dtick=1,
+            type='category'
+        ),
+        barmode='stack',
+        paper_bgcolor='rgba(0, 0, 0, 0)',
+        plot_bgcolor='rgba(0, 0, 0, 0)',
+        margin=dict(l=0, r=0, t=0, b=0),
+        showlegend=False,
+    )
+    return fig
 
 
 layout_viajes_od = html.Div([
@@ -254,27 +303,42 @@ layout_viajes_od = html.Div([
         dbc.Col(html.Div(id='map_viajes_od'), width=9),
         dbc.Col([dbc.Row(dcc.Graph(id="numero_viajes_od")),
                  dbc.Row(dcc.Graph(id="numero_origenes_od")),
-                 dbc.Row(dcc.Graph(id="numero_destinos_od")), ], width=3)
+                 dbc.Row(dcc.Graph(id="numero_destinos_od")), dbc.Row(dcc.Graph(id="numero_tarjetas_od")), ], width=3)
     ]),
     html.Hr(),
     dbc.Row([
-        dbc.Col([dbc.Row(html.Div(id="estrategias_viajes_od")),
-                 dbc.Row(html.Div(id="alternativas_viajes_od"))])
+        dbc.Col([
+            html.H4("Ranking de estrategias par OD"),
+            dbc.Row(dcc.Graph(id="estrategias_viajes_od")),
+            html.Hr(),
+            html.H4("Ranking Alternativas par OD"),
+            dbc.Row(dcc.Graph(id="alternativas_viajes_od"))])
     ]),
 
 ])
 
 
 def distinguir_alternativas_viajes(viajes: pd.DataFrame):
-    print(list(viajes.columns))
-    print('idx_estrategia_viaje_paradero')
-    print(viajes['idx_estrategia_viaje_paradero'])
-    print("estrategia viaje")
-    print(viajes['estrategia_viaje'])
-    print('idx_alternativa_viaje_paradero')
-    print(viajes['idx_alternativa_viaje_paradero'])
-    print("alternativa viaje")
-    print(viajes['alternativa_viaje'])
+    estrategias_od = viajes['estrategia_viaje'].value_counts()
+    values = estrategias_od.keys().tolist()
+    counts = estrategias_od.tolist()
+    estrategias_od = pd.DataFrame()
+    estrategias_od['Estrategia'] = values
+    estrategias_od['Observaciones'] = counts
+
+    fig_rank_estrategia = figura_ranking(estrategias_od, 'Observaciones', "Estrategia", True)
+
+    alternativas_od = viajes['alternativa_viaje'].value_counts()
+    values = alternativas_od.keys().tolist()
+    counts = alternativas_od.tolist()
+    alternativas_od = pd.DataFrame()
+    alternativas_od['Alternativa'] = values
+    alternativas_od['Observaciones'] = counts
+
+    fig_rank_alternativa = figura_ranking(alternativas_od, 'Observaciones', "Alternativa", True)
+
+    return fig_rank_estrategia, fig_rank_alternativa
+
 
 @callback(
     Output('selector_parada_destino', 'options'),
@@ -300,8 +364,9 @@ def update_value_destinos(opciones):
     Output('numero_viajes_od', 'figure'),
     Output('numero_origenes_od', 'figure'),
     Output('numero_destinos_od', 'figure'),
-    Output('estrategias_viajes_od', 'children'),
-    Output('alternativas_viajes_od', 'children'),
+    Output('numero_tarjetas_od', 'figure'),
+    Output('estrategias_viajes_od', 'figure'),
+    Output('alternativas_viajes_od', 'figure'),
     [Input('selector_parada_destino', 'value')], State('selector_parada_origen', 'value')
 )
 def update_output(parada_destino, parada_origen):
@@ -313,7 +378,7 @@ def update_output(parada_destino, parada_origen):
     viajes_od = viajes[
         (viajes['paraderosubida'].isin(paraderos_buffers)) & (viajes['paraderobajada'].isin(paraderos_buffers_destino))]
 
-    distinguir_alternativas_viajes(viajes_od)
+    fig_rank_estrategia, fig_rank_alternativa = distinguir_alternativas_viajes(viajes_od)
 
     my_map = get_mapa_buffer(viajes_od, paraderos_buffers, parada_origen, paraderos_buffers_destino,
                              parada_destino)
@@ -341,4 +406,12 @@ def update_output(parada_destino, parada_origen):
                                # plot_bgcolor='rgba(0,0,0,0)',
                                showlegend=False, height=300)
 
-    return my_map, fig_viajes, fig_destinos, fig_origenes, str(viajes_od['estrategia_viaje'].value_counts()), str(viajes_od['alternativa_viaje'].value_counts())
+    fig_tarjetas = go.Figure(go.Indicator(
+        mode="number",
+        value=len(
+            list(viajes_od['id'].unique())), title="Total de tarjetas"))
+    fig_tarjetas.update_layout(paper_bgcolor='rgba(0,0,0,0)',
+                               # plot_bgcolor='rgba(0,0,0,0)',
+                               showlegend=False, height=300)
+
+    return my_map, fig_viajes, fig_destinos, fig_origenes, fig_tarjetas, fig_rank_estrategia, fig_rank_alternativa
